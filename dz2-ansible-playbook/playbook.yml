@@ -1,0 +1,84 @@
+---
+- name: Configure user on remote machine
+  hosts: target
+  become: true
+
+  vars:
+    new_user: devopsuser
+    new_user_group: devopsuser
+    new_user_public_key: "{{ lookup('file', 'files/devopsuser_key.pub') }}"
+    user_opt_dir: /opt/devopsuser_workdir
+
+  tasks:
+    - name: Create group for user
+      ansible.builtin.group:
+        name: "{{ new_user_group }}"
+        state: present
+
+    - name: Create user on remote machine
+      ansible.builtin.user:
+        name: "{{ new_user }}"
+        group: "{{ new_user_group }}"
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Give user sudo rights without password
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ new_user }}"
+        content: "{{ new_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: "visudo -cf %s"
+
+    - name: Add SSH public key for user
+      ansible.builtin.authorized_key:
+        user: "{{ new_user }}"
+        key: "{{ new_user_public_key }}"
+        state: present
+
+    - name: Remove old SSH password auth config if exists
+      ansible.builtin.file:
+        path: /etc/ssh/sshd_config.d/99-disable-password-auth.conf
+        state: absent
+
+    - name: Disable SSH password authentication in early SSH config
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/00-disable-password-auth.conf
+        content: |
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+        owner: root
+        group: root
+        mode: "0644"
+        validate: "sshd -t -f %s"
+
+    - name: Disable password authentication in main sshd_config
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*PasswordAuthentication\s+.*'
+        line: 'PasswordAuthentication no'
+        backup: true
+        validate: "sshd -t -f %s"
+
+    - name: Disable keyboard-interactive authentication in main sshd_config
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?\s*KbdInteractiveAuthentication\s+.*'
+        line: 'KbdInteractiveAuthentication no'
+        backup: true
+        validate: "sshd -t -f %s"
+
+    - name: Restart SSH service
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
+    - name: Create directory in /opt for user
+      ansible.builtin.file:
+        path: "{{ user_opt_dir }}"
+        state: directory
+        owner: "{{ new_user }}"
+        group: "{{ new_user_group }}"
+        mode: "0660"
