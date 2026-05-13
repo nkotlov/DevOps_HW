@@ -1,0 +1,21 @@
+---
+dependency:
+  name: galaxy
+
+driver:
+  name: docker
+
+platforms:
+  - name: instance
+    image: dz3-ansible-roles-ubuntu:22.04
+    pre_build_image: false
+    dockerfile: Dockerfile.j2
+    command: /bin/bash -c "while true; do sleep 1000; done"
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../roles
+
+verifier:
+  name: ansible

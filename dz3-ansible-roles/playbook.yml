@@ -1,0 +1,8 @@
+---
+- name: Configure users and SSH on remote machine using roles
+  hosts: target
+  become: true
+
+  roles:
+    - user_management
+    - ssh_hardening

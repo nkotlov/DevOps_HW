@@ -1,0 +1,48 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Check molecule user exists
+      ansible.builtin.command: id moleculeuser
+      changed_when: false
+
+    - name: Check sudoers file
+      ansible.builtin.command: cat /etc/sudoers.d/moleculeuser
+      register: sudoers_check
+      changed_when: false
+
+    - name: Assert sudo rule exists
+      ansible.builtin.assert:
+        that:
+          - "'moleculeuser ALL=(ALL) NOPASSWD:ALL' in sudoers_check.stdout"
+
+    - name: Check authorized key exists
+      ansible.builtin.command: test -f /home/moleculeuser/.ssh/authorized_keys
+      changed_when: false
+
+    - name: Check opt directory permissions
+      ansible.builtin.stat:
+        path: /opt/moleculeuser_workdir
+      register: opt_dir_check
+
+    - name: Assert opt directory is correct
+      ansible.builtin.assert:
+        that:
+          - opt_dir_check.stat.exists
+          - opt_dir_check.stat.isdir
+          - opt_dir_check.stat.mode == "0660"
+          - opt_dir_check.stat.pw_name == "moleculeuser"
+          - opt_dir_check.stat.gr_name == "moleculeuser"
+
+    - name: Check SSH password auth config
+      ansible.builtin.command: cat /etc/ssh/sshd_config.d/00-disable-password-auth.conf
+      register: ssh_config_check
+      changed_when: false
+
+    - name: Assert SSH password auth disabled
+      ansible.builtin.assert:
+        that:
+          - "'PasswordAuthentication no' in ssh_config_check.stdout"
+          - "'KbdInteractiveAuthentication no' in ssh_config_check.stdout"

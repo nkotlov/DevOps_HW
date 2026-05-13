@@ -1,0 +1,42 @@
+---
+- name: Create user groups
+  ansible.builtin.group:
+    name: "{{ item.group }}"
+    state: present
+  loop: "{{ managed_users }}"
+
+- name: Create users
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    group: "{{ item.group }}"
+    shell: "{{ item.shell }}"
+    create_home: true
+    state: present
+  loop: "{{ managed_users }}"
+
+- name: Configure sudo without password
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ item.name }}"
+    content: "{{ item.name }} ALL=(ALL) NOPASSWD:ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+  loop: "{{ managed_users }}"
+  when: item.sudo_nopasswd | bool
+
+- name: Add SSH public keys
+  ansible.builtin.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.public_key }}"
+    state: present
+  loop: "{{ managed_users }}"
+
+- name: Create user directories in /opt
+  ansible.builtin.file:
+    path: "{{ item.opt_dir }}"
+    state: directory
+    owner: "{{ item.name }}"
+    group: "{{ item.group }}"
+    mode: "0660"
+  loop: "{{ managed_users }}"

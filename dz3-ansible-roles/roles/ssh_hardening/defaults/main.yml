@@ -1,0 +1,5 @@
+---
+ssh_password_authentication: "no"
+ssh_kbd_interactive_authentication: "no"
+ssh_restart_service: true
+ssh_service_name: ssh

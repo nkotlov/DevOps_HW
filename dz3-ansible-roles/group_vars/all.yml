@@ -1,0 +1,13 @@
+---
+managed_users:
+  - name: roleuser
+    group: roleuser
+    shell: /bin/bash
+    public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL6ipUTCLrQ/Z7JOsxSuI9sEkBS+wY/biaBSOSVYNilF roleuser-key"
+    opt_dir: /opt/roleuser_workdir
+    sudo_nopasswd: true
+
+ssh_password_authentication: "no"
+ssh_kbd_interactive_authentication: "no"
+ssh_restart_service: true
+ssh_service_name: ssh

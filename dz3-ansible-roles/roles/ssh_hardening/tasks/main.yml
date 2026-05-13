@@ -1,0 +1,36 @@
+---
+- name: Remove old SSH password auth config if exists
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d/99-disable-password-auth.conf
+    state: absent
+  notify: Restart ssh
+
+- name: Disable SSH password authentication in config file
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/00-disable-password-auth.conf
+    content: |
+      PasswordAuthentication {{ ssh_password_authentication }}
+      KbdInteractiveAuthentication {{ ssh_kbd_interactive_authentication }}
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "sshd -t -f %s"
+  notify: Restart ssh
+
+- name: Disable password authentication in main sshd_config
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?\s*PasswordAuthentication\s+.*'
+    line: "PasswordAuthentication {{ ssh_password_authentication }}"
+    backup: true
+    validate: "sshd -t -f %s"
+  notify: Restart ssh
+
+- name: Disable keyboard-interactive authentication in main sshd_config
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?\s*KbdInteractiveAuthentication\s+.*'
+    line: "KbdInteractiveAuthentication {{ ssh_kbd_interactive_authentication }}"
+    backup: true
+    validate: "sshd -t -f %s"
+  notify: Restart ssh
